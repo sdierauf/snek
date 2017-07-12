@@ -52,8 +52,10 @@
     (with-struct (move-vert-alt- v xy rel) a
       (-valid-vert (num-verts v :err nil)
         (let ((fxy (math:dfloat* xy)))
+          (declare (list fxy))
           (destructuring-bind (x y)
             (if rel (math:add (get-atup verts v) fxy) fxy)
+            (declare (double-float x y))
             (setf (aref verts v 0) x
                   (aref verts v 1) y)))))))
 
@@ -78,6 +80,7 @@
         (let ((w (if rel
                    (add-vert! snk (math:add (get-vert snk v) xy))
                    (add-vert! snk xy))))
+          (declare (integer w))
           (add-edge! snk (list v w) :g g)
           w)))))
 
@@ -120,6 +123,7 @@
           (verts (snek-verts snk)))
       (destructuring-bind (a b)
         e
+        (declare (integer a b))
         (if res
           (let ((c (add-vert! snk
                       (math:mid (get-atup verts a)
@@ -141,9 +145,12 @@
     `(let ((,vname (snek-verts ,snk))
            (,v1name ,v1)
            (,v2name ,v2)
-           (,rname ,r))
+           (,rname (math:dfloat ,r)))
+      (declare (double-float ,rname))
+      (declare (integer ,v1name))
+      (declare (integer ,v2name))
       (-get-force-alterations
-        ,v1 ,v2
+        ,v1name ,v2name
         (math:scale
           (math:nsub
             (get-atup ,vname ,v1name)

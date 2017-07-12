@@ -200,6 +200,7 @@
     :add-edge*?
     :add-grp!
     :add-vert!
+    :add-verts!
     :add-vert?
     :append-edge?
     :del-edge!

@@ -12,7 +12,7 @@
 
 (defun init-circ (snk num rad &key (xy (list 0.0d0 0.0d0)) g)
   (let ((vv (loop for p in (math:linspace 0.0d0 1.0d0 num)
-                  collect (add-vert! snk (on-circ p rad :xy xy)))))
+                  collect (add-vert! snk (math:on-circ p rad :xy xy)))))
     (loop for a in vv and b in (-roll-once vv)
           collect (add-edge! snk (list a b) :g g))))
 

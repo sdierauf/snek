@@ -2,7 +2,6 @@
 (in-package :sandpaint)
 
 
-
 (defun make-rgba-array (size)
   (make-array
     (list size size 4)
@@ -12,22 +11,29 @@
 
 
 (defun -scale-convert (v &key (s 1.0d0) (gamma 1.0d0))
+  (declare (double-float v s gamma))
   (setf v (expt (/ v s) gamma)))
 
 
 (defun -unsigned-256 (v)
+  (declare (double-float v))
   (cond
     ((> v 1.0d0) 255)
     ((< v 0.0d0) 0)
     (t (round (* 255 v)))))
 
 
-(defun -setf-operator-over (vals x y i -alpha color)
+(defun -setf-operator-over (vals x y i a color)
+  (declare (integer x y i))
+  (declare (double-float a color))
   (setf (aref vals x y i)
-        (+ (* (aref vals x y i) -alpha) color)))
+        (+ (* (aref vals x y i) a) color)))
 
 (defun -operator-over (vals x y r g b a)
+  (declare (integer x y))
+  (declare (double-float r g b a))
   (let ((ia (- 1.0 a)))
+    (declare (double-float ia))
     (-setf-operator-over vals x y 0 ia r)
     (-setf-operator-over vals x y 1 ia g)
     (-setf-operator-over vals x y 2 ia b)
@@ -35,7 +41,9 @@
 
 
 (defun -draw-stroke (vals size grains v1 v2 r g b a)
-  (loop for i from 0 below grains do
+  (declare (list v1 v2))
+  (declare (double-float r g b a))
+  (loop for i integer from 0 below grains do
     (inside* (size (rnd:on-line v1 v2) x y)
       (-operator-over vals x y r g b a))))
 
@@ -58,7 +66,8 @@
 
 
 (defun -draw-circ (vals size xy rad grains r g b a)
-  (loop for i below grains do
+  (declare (double-float r g b a))
+  (loop for i integer below grains do
     (inside* (size (math:add xy (rnd:in-circ rad)) x y)
       (-operator-over vals x y r g b a))))
 
@@ -86,7 +95,10 @@
 
 
 (defun -png-tuple (vals x y gamma)
+  (declare (integer x y))
+  (declare (double-float gamma))
   (let ((a (aref vals x y 3)))
+    (declare (double-float a))
     (if (> a 0.0d0)
       (list
         (-unsigned-256 (-scale-convert (aref vals x y 0) :s a :gamma gamma))
@@ -99,6 +111,7 @@
 (defun clear (sand rgba)
   (destructuring-bind (r g b a)
     rgba
+    (declare (double-float r g b a))
     (with-struct (sandpaint- size vals) sand
       (square-loop (x y size)
         (setf (aref vals x y 0) (* a r)
@@ -132,6 +145,7 @@
 (defun set-rgba (sand rgba)
   (destructuring-bind (r g b a)
     (math:dfloat* rgba)
+    (declare (double-float r g b a))
     (setf (sandpaint-r sand) (* r a)
           (sandpaint-g sand) (* g a)
           (sandpaint-b sand) (* b a)
@@ -145,6 +159,7 @@
   (let ((vals (sandpaint-vals sand)))
     (destructuring-bind (r g b a)
       (mapcar (lambda (i) (aref vals 0 0 i)) (math:range 4))
+      (declare (double-float r g b a))
       (if (>= a 1.0d0)
         (let ((na (* a (math:dfloat sa))))
           (setf (aref vals 0 0 0) (* (/ r a) na)
@@ -155,28 +170,28 @@
 
 (defun pix (sand vv)
   (with-struct (sandpaint- size vals r g b a) sand
-    (loop for v in vv do
+    (loop for v list in vv do
       (inside* (size v x y)
         (-operator-over vals x y r g b a)))))
 
 
 (defun pix* (sand vv n)
   (with-struct (sandpaint- size vals r g b a) sand
-    (loop for i from 0 below n do
+    (loop for i integer from 0 below n do
       (inside* (size (get-atup vv i) x y)
         (-operator-over vals x y r g b a)))))
 
 
 (defun circ (sand vv rad n)
   (with-struct (sandpaint- size vals r g b a) sand
-    (loop for v in vv do
+    (loop for v list in vv do
       (-draw-circ vals size v rad n r g b a))))
 
 
 ; draw circ from array
 (defun circ* (sand vv num rad grains)
   (with-struct (sandpaint- size vals r g b a) sand
-    (loop for i from 0 below num do
+    (loop for i integer from 0 below num do
       (-draw-circ vals size (get-atup vv i)
                   rad grains r g b a))))
 
@@ -196,20 +211,22 @@
 
 (defun lin-path (sand path rad grains &key (dens 1))
   (with-struct (sandpaint- size vals r g b a) sand
-    (loop for u in path and w in (cdr path) do
+    (loop for u list in path and w list in (cdr path) do
       (let ((stps (math:int (floor (+ 1 (* dens (math:dst u w)))))))
+        (declare (integer stps))
         (math:rep (p (math:linspace 0 1 stps :end nil))
           (-draw-circ vals size (math:on-line p u w) rad grains r g b a))))))
 
 
 ; TODO: 16 bit?
-(defun save (sand fn &key (gamma 1.0))
+(defun save (sand fn &key (gamma 1.0d0))
   (let ((fnimg (append-postfix
                  (aif fn fn
                       (progn
                         (warn "missing file name, using: tmp.png")
                         "tmp"))
-                 ".png")))
+                 ".png"))
+        (gamma* (math:dfloat gamma)))
     (with-struct (sandpaint- size vals) sand
       (let ((png (make-instance
                    'zpng::pixel-streamed-png
@@ -225,7 +242,7 @@
             :element-type '(unsigned-byte 8))
           (zpng:start-png png stream)
           (square-loop (x y size)
-            (zpng:write-pixel (-png-tuple vals y x gamma) png))
+            (zpng:write-pixel (-png-tuple vals y x gamma*) png))
           (zpng:finish-png png))))
     (format t "~%file: ~a~%~%" fnimg)))
 

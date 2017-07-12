@@ -25,6 +25,7 @@
 (defmacro -valid-vert ((num vv &key (err t)) &body body)
   (with-gensyms (v)
     `(let ((,v ,vv))
+      (declare (integer ,v))
       (if (and (> ,v -1) (< ,v ,num))
         (progn ,@body)
         (if ,err (error "vert does not exist: ~a" ,v))))))
@@ -33,7 +34,7 @@
 (defmacro -valid-verts ((num vv v) &body body)
   (with-gensyms (vv*)
     `(let ((,vv* ,vv))
-      (loop for ,v in ,vv*
+      (loop for ,v integer in ,vv*
         if
           (and (> ,v -1) (< ,v ,num))
         collect
@@ -44,6 +45,7 @@
   (with-struct (snek- verts num-verts) snk
     (destructuring-bind (x y)
       (math:dfloat* xy)
+      (declare (double-float x y))
       (setf (aref verts num-verts 0) x
             (aref verts num-verts 1) y)
       (- (incf (snek-num-verts snk)) 1))))
@@ -68,7 +70,7 @@
 
 (defun get-all-verts (snk)
   (with-struct (snek- verts num-verts) snk
-    (loop for v from 0 below num-verts
+    (loop for v integer from 0 below num-verts
       collect (get-atup verts v))))
 
 
@@ -104,17 +106,21 @@
       (with-struct (grp- grph) grp
         (destructuring-bind (a b)
           ee
+          (declare (integer a b))
           (if (and (< a num-verts)
                    (< b num-verts)
                    (not (eql a b)))
-            (if (graph:add grph ee)
-              (sort ee #'<))))))))
+            (if (graph:add grph a b)
+              (sort (list a b) #'<))))))))
 
 
 (defun del-edge! (snk ee &key g)
   (with-grp (snk grp g)
     (with-struct (grp- grph) grp
-      (graph:del grph ee))))
+      (destructuring-bind (a b)
+        ee
+        (declare (integer a b))
+        (graph:del grph a b)))))
 
 
 (defun verts-in-rad (snk xy rad)

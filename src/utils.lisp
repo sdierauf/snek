@@ -19,13 +19,13 @@
   `(if (= 0 (mod ,i ,n)) (format t "~%itt: ~a~%" ,i)))
 
 
-(defun 2* (l) (* l 2))
+(defun dhalf (l)
+  (declare (double-float l))
+  (* l 0.5d0))
 
 
-(defun 2+ (l) (+ l 2))
-
-
-(defun half (l) (/ l 2))
+(defun half (l)
+  (/ l 2))
 
 
 (defun make-dfloat-array (rows &key (cols 2) (initial 0.0d0))
@@ -60,18 +60,15 @@
   (make-array n :fill-pointer 0 :adjustable adjustable))
 
 
-(defun to-list (aa)
-  (loop for i from 0 below (length aa)
-    collect (aref aa i)))
-
-
 (defun get-atup (arr row)
+  (declare (integer row))
   (list
     (aref arr row 0)
     (aref arr row 1)))
 
 
 (defun set-atup (arr row ab)
+  (declare (integer row))
   (destructuring-bind (a b)
     ab
     (setf (aref arr row 0) a
@@ -90,8 +87,8 @@
 (defmacro square-loop ((x y s) &body body)
   (with-gensyms (sname)
     `(let ((,sname ,s))
-      (loop for ,x from 0 below ,sname do
-        (loop for ,y from 0 below ,sname do
+      (loop for ,x integer from 0 below ,sname do
+        (loop for ,y integer from 0 below ,sname do
           ,@body)))))
 
 
